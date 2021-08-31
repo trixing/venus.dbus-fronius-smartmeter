@@ -19,9 +19,21 @@ sys.path.insert(1, os.path.join(os.path.dirname(__file__), '../ext/velib_python'
 from vedbus import VeDbusService
 
 class DbusDummyService:
+  def role_changed(self, path, val):
+    if val not in self.allowed_roles:
+       return False
+    old, inst = self.get_role_instance()
+    self.settings['instance'] = '%s:%s' % (val, inst)
+    return True
+
+  def get_role_instance(self):
+     val = self.settings['instance'].split(':')
+     return val[0], int(val[1])
+
   def __init__(self, servicename, deviceinstance, paths, productname='Fronius Smart Meter', connection='Fronius Smart Meter service'):
     self._dbusservice = VeDbusService(servicename)
     self._paths = paths
+    self.settings = {'instance': 'grid:40'}
 
     logging.debug("%s /DeviceInstance = %d" % (servicename, deviceinstance))
 
@@ -38,16 +50,25 @@ class DbusDummyService:
     self._dbusservice.add_path('/HardwareVersion', 0)
     self._dbusservice.add_path('/Connected', 1)
 
+    self.allowed_roles = ['grid', 'pvinverter', 'genset']
+    self.default_role = 'grid'
+    self.role = self.default_role
+    self._dbusservice.add_path('/AllowedRoles', self.allowed_roles)
+    #self._dbusservice.add_path('/Role', self.role, writeable=True,
+    #                           onchangecallback=self.role_changed)
+
     for path, settings in self._paths.iteritems():
       self._dbusservice.add_path(
         path, settings['initial'], writeable=True, onchangecallback=self._handlechangedvalue)
 
-    gobject.timeout_add(200, self._update) # pause 200ms before the next request
+    gobject.timeout_add(1000, self._update) # pause 200ms before the next request
 
   def _update(self):
-    URL = "http://10.194.65.143/solar_api/v1/GetMeterRealtimeData.cgi?Scope=Device&DeviceId=0&DataCollection=MeterRealtimeData"
+    URL = "http://192.168.2.100/solar_api/v1/GetMeterRealtimeData.cgi?Scope=Device&DeviceId=0&DataCollection=MeterRealtimeData"
     meter_r = requests.get(url = URL)
     meter_data = meter_r.json() 
+    # Frequency_Phase_Average
+
     MeterConsumption = meter_data['Body']['Data']['PowerReal_P_Sum']
     self._dbusservice['/Ac/Power'] = MeterConsumption # positive: consumption, negative: feed into grid
     self._dbusservice['/Ac/L1/Voltage'] = meter_data['Body']['Data']['Voltage_AC_Phase_1']
@@ -59,8 +80,8 @@ class DbusDummyService:
     self._dbusservice['/Ac/L1/Power'] = meter_data['Body']['Data']['PowerReal_P_Phase_1']
     self._dbusservice['/Ac/L2/Power'] = meter_data['Body']['Data']['PowerReal_P_Phase_2']
     self._dbusservice['/Ac/L3/Power'] = meter_data['Body']['Data']['PowerReal_P_Phase_3']
-    self._dbusservice['/Ac/Energy/Forward'] = meter_data['Body']['Data']['EnergyReal_WAC_Sum_Consumed']
-    self._dbusservice['/Ac/Energy/Reverse'] = meter_data['Body']['Data']['EnergyReal_WAC_Sum_Produced']
+    self._dbusservice['/Ac/Energy/Forward'] = float(meter_data['Body']['Data']['EnergyReal_WAC_Sum_Consumed']) / 1000.
+    self._dbusservice['/Ac/Energy/Reverse'] = float(meter_data['Body']['Data']['EnergyReal_WAC_Sum_Produced']) / 1000.
     logging.info("House Consumption: %s" % (MeterConsumption))
     return True
 
@@ -77,8 +98,8 @@ def main():
   DBusGMainLoop(set_as_default=True)
 
   pvac_output = DbusDummyService(
-    servicename='com.victronenergy.grid',
-    deviceinstance=0,
+    servicename='com.victronenergy.grid.fronius',
+    deviceinstance=40,
     paths={
       '/Ac/Power': {'initial': 0},
       '/Ac/L1/Voltage': {'initial': 0},
