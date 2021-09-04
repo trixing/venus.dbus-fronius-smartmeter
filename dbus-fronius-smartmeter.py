@@ -18,6 +18,8 @@ import thread   # for daemon = True
 sys.path.insert(1, os.path.join(os.path.dirname(__file__), '../ext/velib_python'))
 from vedbus import VeDbusService
 
+log = logging.getLogger("DbusFroniusSmartMeter")
+
 class DbusDummyService:
   def role_changed(self, path, val):
     if val not in self.allowed_roles:
@@ -67,7 +69,7 @@ class DbusDummyService:
     try:
         self._update()
     except Exception as e:
-        logging.error('Error running update %s' % e)
+        log.error('Error running update %s' % e)
     return True
 
   def _update(self):
@@ -89,15 +91,27 @@ class DbusDummyService:
     self._dbusservice['/Ac/L3/Power'] = meter_data['Body']['Data']['PowerReal_P_Phase_3']
     self._dbusservice['/Ac/Energy/Forward'] = float(meter_data['Body']['Data']['EnergyReal_WAC_Sum_Consumed']) / 1000.
     self._dbusservice['/Ac/Energy/Reverse'] = float(meter_data['Body']['Data']['EnergyReal_WAC_Sum_Produced']) / 1000.
-    logging.info("House Consumption: %s" % (MeterConsumption))
+    log.info("House Consumption: %s" % (MeterConsumption))
     return True
 
   def _handlechangedvalue(self, path, value):
-    logging.debug("someone else updated %s to %s" % (path, value))
+    log.debug("someone else updated %s to %s" % (path, value))
     return True # accept the change
 
 def main():
-  logging.basicConfig(level=logging.INFO)
+  #logging.basicConfig(level=logging.INFO)
+
+  root = logging.getLogger()
+  root.setLevel(logging.INFO)
+
+  handler = logging.StreamHandler(sys.stdout)
+  handler.setLevel(logging.INFO)
+  formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+  handler.setFormatter(formatter)
+  root.addHandler(handler)
+
+  log.info('Startup')
+
   thread.daemon = True # allow the program to quit
 
   from dbus.mainloop.glib import DBusGMainLoop
