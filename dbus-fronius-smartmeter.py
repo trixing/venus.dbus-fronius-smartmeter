@@ -68,6 +68,7 @@ class DbusDummyService:
         self._update()
     except Exception as e:
         logging.error('Error running update %s' % e)
+    return True
 
   def _update(self):
     URL = "http://192.168.2.100/solar_api/v1/GetMeterRealtimeData.cgi?Scope=Device&DeviceId=0&DataCollection=MeterRealtimeData"
