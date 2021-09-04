@@ -61,11 +61,17 @@ class DbusDummyService:
       self._dbusservice.add_path(
         path, settings['initial'], writeable=True, onchangecallback=self._handlechangedvalue)
 
-    gobject.timeout_add(1000, self._update) # pause 200ms before the next request
+    gobject.timeout_add(1000, self._safe_update)
+
+  def _safe_update(self):
+    try:
+        self._update()
+    except Exception as e:
+        logging.error('Error running update %s' % e)
 
   def _update(self):
     URL = "http://192.168.2.100/solar_api/v1/GetMeterRealtimeData.cgi?Scope=Device&DeviceId=0&DataCollection=MeterRealtimeData"
-    meter_r = requests.get(url = URL)
+    meter_r = requests.get(url = URL, timeout=10)
     meter_data = meter_r.json() 
     # Frequency_Phase_Average
 
