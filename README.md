@@ -8,7 +8,8 @@ The Python script cyclically reads data from the Fronius SmartMeter via the Fron
 
 ### Configuration
 
-In the Python file, you should put the IP of your Fronius device that hosts the REST API. In my setup, it is the IP of the Fronius Symo, which gets the data from the Fronius Smart Metervia the RS485 connection between them.
+The script should auto-detect the IP of the Fronius device if it is on the same network.
+Otherwise specify the IP using --ip.
 
 ### Installation
 
