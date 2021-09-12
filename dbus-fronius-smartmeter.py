@@ -220,7 +220,7 @@ def main():
   DBusGMainLoop(set_as_default=True)
 
   pvac_output = DbusFroniusService(
-    servicename='com.victronenergy.test.fronius',
+    servicename='com.victronenergy.grid.fronius',
     deviceinstance=40,
     ip=args.ip)
 
