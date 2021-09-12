@@ -10,6 +10,7 @@ try:
     import gobject
 except ImportError:
     from gi.repository import GLib as gobject
+import dbus
 import json
 import logging
 import platform
@@ -25,7 +26,7 @@ except ImportError:
 
 # our own packages
 sys.path.insert(1, os.path.join(os.path.dirname(__file__), '../ext/velib_python'))
-from vedbus import VeDbusService
+from vedbus import VeDbusService, VeDbusItemImport
 
 log = logging.getLogger("DbusFroniusSmartMeter")
 
@@ -63,8 +64,20 @@ class DbusFroniusService:
         return addr[0]
     return None
 
+  def detect_dbus(self):
+      dbusConn = dbus.SessionBus() if 'DBUS_SESSION_BUS_ADDRESS' in os.environ else dbus.SystemBus()
+      if not dbusConn:
+          return None
+      for name in dbusConn.list_names():
+          if name.startswith('com.victronenergy.pvinverter.'):
+            log.info('Getting IP from %s' % name)
+            conn = VeDbusItemImport(dbusConn, name, '/Mgmt/Connection').get_value()
+            self._firmware = VeDbusItemImport(dbusConn, name, '/DataManagerVersion').get_value()
+            log.info('Connection Info: %s, Firmware %s' % (conn, self._firmware))
+            return conn.split(' ')[0]
+      return None
+
   def __init__(self, servicename, deviceinstance, ip=None):
-    self._dbusservice = VeDbusService(servicename)
     self.settings = {'instance': 'grid:%d' % deviceinstance}
 
     self._latency = None
@@ -73,12 +86,13 @@ class DbusFroniusService:
     if ip == 'test':
         self._testdata = 'testdata/GetMeterRealtimeData.cgi'
 
-    self._ip = ip or self.detect()
+    self._ip = ip or self.detect_dbus() or self.detect()
     self._url = "http://" + self._ip + "/solar_api/v1/GetMeterRealtimeData.cgi?Scope=Device&DeviceId=0&DataCollection=MeterRealtimeData"
     data = self._get_meter_data()
 
     log.debug("%s /DeviceInstance = %d" % (servicename, deviceinstance))
 
+    self._dbusservice = VeDbusService(servicename)
     # Create the management objects, as specified in the ccgx dbus-api document
     self._dbusservice.add_path('/Mgmt/ProcessName', __file__)
     self._dbusservice.add_path('/Mgmt/ProcessVersion', 'Running on Python ' + platform.python_version())
@@ -206,7 +220,7 @@ def main():
   DBusGMainLoop(set_as_default=True)
 
   pvac_output = DbusFroniusService(
-    servicename='com.victronenergy.grid.fronius',
+    servicename='com.victronenergy.test.fronius',
     deviceinstance=40,
     ip=args.ip)
 
