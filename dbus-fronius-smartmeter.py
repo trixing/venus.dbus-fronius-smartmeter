@@ -69,6 +69,10 @@ class DbusFroniusService:
 
     self._latency = None
     self._firmware = '0.1'
+    self._testdata = None
+    if ip == 'test':
+        self._testdata = 'testdata/GetMeterRealtimeData.cgi'
+
     self._ip = ip or self.detect()
     self._url = "http://" + self._ip + "/solar_api/v1/GetMeterRealtimeData.cgi?Scope=Device&DeviceId=0&DataCollection=MeterRealtimeData"
     data = self._get_meter_data()
@@ -135,14 +139,17 @@ class DbusFroniusService:
 
   def _get_meter_data(self):
     now = time.time()
-    meter_r = requests.get(url = self._url, timeout=10)
+    if self._testdata:
+        meter_r = json.loads(open('testdata/GetMeterRealtimeData.json').read())
+    else:
+        meter_r = requests.get(url = self._url, timeout=10).json()
     latency = time.time() - now
     if self._latency:
         self._latency = (9*self._latency + latency)/10
     else:
         self._latency = latency
 
-    return meter_r.json()['Body']['Data']
+    return meter_r['Body']['Data']
 
   def _update(self):
     meter_data = self._get_meter_data()
@@ -181,7 +188,7 @@ def main():
 
   import argparse
   parser = argparse.ArgumentParser()
-  parser.add_argument('--ip', help='IP Address of Smart Meter, leave empty to autodetect')
+  parser.add_argument('--ip', help='IP Address of Smart Meter, leave empty to autodetect, specify "test" to use canned data')
   args = parser.parse_args()
   if args.ip:
       log.info('User supplied IP: %s' % args.ip)
