@@ -49,7 +49,7 @@ class DbusFroniusService:
     client.settimeout(5)
     client.bind(("", 50050))
     for i in range(1, 5):
-        logging.info('Detect, try 1')
+        log.info('Detect, try %d' % i)
         client.sendto("{\"GetFroniusLoggerInfo\":\"all\"}".encode('utf-8'), ("255.255.255.255", 50049))
         try:
             data, addr = client.recvfrom(1024)
@@ -59,13 +59,13 @@ class DbusFroniusService:
         sw = info.get('LoggerInfo', {}).get('SoftwareVersion', None)
         if sw:
             self._firmware = '.'.join(str(s) for s in [sw['Major'], sw['Minor'], sw['Release'], sw['Build']])
-        logging.info('Found device @%s, firmware %s' % (addr[0], self._firmware))
+        log.info('Found device @%s, firmware %s' % (addr[0], self._firmware))
         return addr[0]
     return None
 
   def __init__(self, servicename, deviceinstance, ip=None):
     self._dbusservice = VeDbusService(servicename)
-    self.settings = {'instance': 'grid:40'}
+    self.settings = {'instance': 'grid:%d' % deviceinstance}
 
     self._latency = None
     self._firmware = '0.1'
@@ -164,9 +164,6 @@ class DbusFroniusService:
     log.info("Meter Power: %s, Latency: %.1fms" % (MeterConsumption, self._latency*1000))
     return meter_data
 
-  def _handlechangedvalue(self, path, value):
-    log.debug("someone else updated %s to %s" % (path, value))
-    return True # accept the change
 
 def main():
   #logging.basicConfig(level=logging.INFO)
