@@ -113,25 +113,33 @@ class DbusFroniusService:
     #self._dbusservice.add_path('/Role', self.role, writeable=True,
     #                           onchangecallback=self.role_changed)
 
-    paths=[
-      '/Ac/Power',
-      '/Ac/Frequency',
-      '/Ac/L1/Voltage',
-      '/Ac/L2/Voltage',
-      '/Ac/L3/Voltage',
-      '/Ac/L1/Current',
-      '/Ac/L2/Current',
-      '/Ac/L3/Current',
-      '/Ac/L1/Power',
-      '/Ac/L2/Power',
-      '/Ac/L3/Power',
-      '/Ac/Energy/Forward',
-      '/Ac/Energy/Reverse',
-      '/Latency',
-    ]
+    _kwh = lambda p, v: (str(round(v, 2)) + ' kWh')
+    _a = lambda p, v: (str(round(v, 1)) + ' A')
+    _w = lambda p, v: (str(round(v, 1)) + ' W')
+    _v = lambda p, v: (str(round(v, 1)) + ' V')
+    _hz = lambda p, v: (str(round(v, 2)) + ' Hz')
+    _ms = lambda p, v: (str(round(v, 2)) + ' ms')
 
-    for path in paths:
-      self._dbusservice.add_path(path, 0, writeable=False)
+    paths={
+      '/Ac/Power': {'textformat': _w},
+      '/Ac/Current': {'textformat': _a},
+      '/Ac/Frequency': {'textformat': _hz},
+      '/Ac/L1/Voltage': {'textformat': _v},
+      '/Ac/L2/Voltage': {'textformat': _v},
+      '/Ac/L3/Voltage': {'textformat': _v},
+      '/Ac/L1/Current': {'textformat': _a},
+      '/Ac/L2/Current': {'textformat': _a},
+      '/Ac/L3/Current': {'textformat': _a},
+      '/Ac/L1/Power': {'textformat': _w},
+      '/Ac/L2/Power': {'textformat': _w},
+      '/Ac/L3/Power': {'textformat': _w},
+      '/Ac/Energy/Forward': {'textformat': _kwh},
+      '/Ac/Energy/Reverse': {'textformat': _kwh},
+      '/Latency': {'textformat': _ms},
+    }
+
+    for path, settings in paths.items():
+      self._dbusservice.add_path(path, 0, writeable=False, gettextcallback=settings['textformat'])
 
     self._retries = 0
     self._failures = 0
@@ -173,9 +181,16 @@ class DbusFroniusService:
     self._dbusservice['/Ac/L1/Voltage'] = meter_data['Voltage_AC_Phase_1']
     self._dbusservice['/Ac/L2/Voltage'] = meter_data['Voltage_AC_Phase_2']
     self._dbusservice['/Ac/L3/Voltage'] = meter_data['Voltage_AC_Phase_3']
-    self._dbusservice['/Ac/L1/Current'] = meter_data['Current_AC_Phase_1']
-    self._dbusservice['/Ac/L2/Current'] = meter_data['Current_AC_Phase_2']
-    self._dbusservice['/Ac/L3/Current'] = meter_data['Current_AC_Phase_3']
+    powerL1 = meter_data['PowerReal_P_Phase_1']
+    powerL2 = meter_data['PowerReal_P_Phase_2']
+    powerL3 = meter_data['PowerReal_P_Phase_3']
+    currentL1 = meter_data['Current_AC_Phase_1'] if powerL1 >= 0 else -1* meter_data['Current_AC_Phase_1']
+    currentL2 = meter_data['Current_AC_Phase_2'] if powerL2 >= 0 else -1* meter_data['Current_AC_Phase_2']
+    currentL3 = meter_data['Current_AC_Phase_3'] if powerL3 >= 0 else -1* meter_data['Current_AC_Phase_3']
+    self._dbusservice['/Ac/Current'] = currentL1 + currentL2 + currentL3
+    self._dbusservice['/Ac/L1/Current'] = currentL1
+    self._dbusservice['/Ac/L2/Current'] = currentL2
+    self._dbusservice['/Ac/L3/Current'] = currentL3
     self._dbusservice['/Ac/L1/Power'] = meter_data['PowerReal_P_Phase_1']
     self._dbusservice['/Ac/L2/Power'] = meter_data['PowerReal_P_Phase_2']
     self._dbusservice['/Ac/L3/Power'] = meter_data['PowerReal_P_Phase_3']
