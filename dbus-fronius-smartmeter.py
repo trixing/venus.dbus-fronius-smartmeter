@@ -115,6 +115,7 @@ class DbusFroniusService:
 
     paths=[
       '/Ac/Power',
+      '/Ac/Current',
       '/Ac/Frequency',
       '/Ac/L1/Voltage',
       '/Ac/L2/Voltage',
@@ -136,7 +137,7 @@ class DbusFroniusService:
     self._retries = 0
     self._failures = 0
     self._latency = None
-    gobject.timeout_add(700, self._safe_update)
+    gobject.timeout_add(1000, self._safe_update)
 
   def _safe_update(self):
     try:
@@ -173,9 +174,16 @@ class DbusFroniusService:
     self._dbusservice['/Ac/L1/Voltage'] = meter_data['Voltage_AC_Phase_1']
     self._dbusservice['/Ac/L2/Voltage'] = meter_data['Voltage_AC_Phase_2']
     self._dbusservice['/Ac/L3/Voltage'] = meter_data['Voltage_AC_Phase_3']
-    self._dbusservice['/Ac/L1/Current'] = meter_data['Current_AC_Phase_1']
-    self._dbusservice['/Ac/L2/Current'] = meter_data['Current_AC_Phase_2']
-    self._dbusservice['/Ac/L3/Current'] = meter_data['Current_AC_Phase_3']
+    powerL1 = meter_data['PowerReal_P_Phase_1']
+    powerL2 = meter_data['PowerReal_P_Phase_2']
+    powerL3 = meter_data['PowerReal_P_Phase_3']
+    currentL1 = meter_data['Current_AC_Phase_1'] if powerL1 >= 0 else -1* meter_data['Current_AC_Phase_1']
+    currentL2 = meter_data['Current_AC_Phase_2'] if powerL2 >= 0 else -1* meter_data['Current_AC_Phase_2']
+    currentL3 = meter_data['Current_AC_Phase_3'] if powerL3 >= 0 else -1* meter_data['Current_AC_Phase_3']
+    self._dbusservice['/Ac/Current'] = currentL1 + currentL2 + currentL3
+    self._dbusservice['/Ac/L1/Current'] = currentL1
+    self._dbusservice['/Ac/L2/Current'] = currentL2
+    self._dbusservice['/Ac/L3/Current'] = currentL3
     self._dbusservice['/Ac/L1/Power'] = meter_data['PowerReal_P_Phase_1']
     self._dbusservice['/Ac/L2/Power'] = meter_data['PowerReal_P_Phase_2']
     self._dbusservice['/Ac/L3/Power'] = meter_data['PowerReal_P_Phase_3']
