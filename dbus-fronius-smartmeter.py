@@ -137,7 +137,7 @@ class DbusFroniusService:
     self._retries = 0
     self._failures = 0
     self._latency = None
-    gobject.timeout_add(1000, self._safe_update)
+    gobject.timeout_add(700, self._safe_update)
 
   def _safe_update(self):
     try:
