@@ -113,26 +113,33 @@ class DbusFroniusService:
     #self._dbusservice.add_path('/Role', self.role, writeable=True,
     #                           onchangecallback=self.role_changed)
 
-    paths=[
-      '/Ac/Power',
-      '/Ac/Current',
-      '/Ac/Frequency',
-      '/Ac/L1/Voltage',
-      '/Ac/L2/Voltage',
-      '/Ac/L3/Voltage',
-      '/Ac/L1/Current',
-      '/Ac/L2/Current',
-      '/Ac/L3/Current',
-      '/Ac/L1/Power',
-      '/Ac/L2/Power',
-      '/Ac/L3/Power',
-      '/Ac/Energy/Forward',
-      '/Ac/Energy/Reverse',
-      '/Latency',
-    ]
+    _kwh = lambda p, v: (str(round(v, 2)) + ' kWh')
+    _a = lambda p, v: (str(round(v, 1)) + ' A')
+    _w = lambda p, v: (str(round(v, 1)) + ' W')
+    _v = lambda p, v: (str(round(v, 1)) + ' V')
+    _hz = lambda p, v: (str(round(v, 2)) + ' Hz')
+    _ms = lambda p, v: (str(round(v, 2)) + ' ms')
 
-    for path in paths:
-      self._dbusservice.add_path(path, 0, writeable=False)
+    paths={
+      '/Ac/Power': {'textformat': _w},
+      '/Ac/Current': {'textformat': _a},
+      '/Ac/Frequency': {'textformat': _hz},
+      '/Ac/L1/Voltage': {'textformat': _v},
+      '/Ac/L2/Voltage': {'textformat': _v},
+      '/Ac/L3/Voltage': {'textformat': _v},
+      '/Ac/L1/Current': {'textformat': _a},
+      '/Ac/L2/Current': {'textformat': _a},
+      '/Ac/L3/Current': {'textformat': _a},
+      '/Ac/L1/Power': {'textformat': _w},
+      '/Ac/L2/Power': {'textformat': _w},
+      '/Ac/L3/Power': {'textformat': _w},
+      '/Ac/Energy/Forward': {'textformat': _kwh},
+      '/Ac/Energy/Reverse': {'textformat': _kwh},
+      '/Latency': {'textformat': _ms},
+    }
+
+    for path, settings in paths.items():
+      self._dbusservice.add_path(path, 0, writeable=False, gettextcallback=settings['textformat'])
 
     self._retries = 0
     self._failures = 0
